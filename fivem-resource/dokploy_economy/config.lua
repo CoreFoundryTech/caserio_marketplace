@@ -1,7 +1,7 @@
 Config = {}
 
-Config.BackendUrl = "http://localhost:3000" -- Cambiar por URL real en producción
-Config.BackendToken = "change_me_to_secure_token" -- Debe coincidir con .env FIVEM_SECRET_TOKEN
+-- URL de tu tienda Tebex (o web personalizada)
+Config.StoreUrl = "https://tienda.tuserver.com" 
 
 -- Tasa de cambio: Cuánto dinero del juego cuesta 1 Coin
 Config.ExchangeRate = 1000 -- $1000 Dinero Juego = 1 Caserio Coin

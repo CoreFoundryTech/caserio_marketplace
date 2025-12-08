@@ -1,96 +1,80 @@
-ESX = nil
-TriggerEvent('esx:getSharedObject', function(obj) ESX = obj end)
+local QBCore = exports['qb-core']:GetCoreObject()
 
--- Callback para obtener datos del jugador (Dinero y Coins)
-ESX.RegisterServerCallback('dokploy_economy:getPlayerData', function(source, cb)
-    local xPlayer = ESX.GetPlayerFromId(source)
-    local money = xPlayer.getMoney()
-    
-    -- Asumimos que existe una cuenta 'coins', si no usar 'black_money' para test o columna SQL custom
-    local coinsAccount = xPlayer.getAccount('coins') 
-    local coins = 0
-    
-    if coinsAccount then
-        coins = coinsAccount.money
+-- 1. Comando ADMIN para dar Coins (Usado por Tebex)
+-- Uso: addcoins [id_jugador] [cantidad]
+RegisterCommand('addcoins', function(source, args, rawCommand)
+    local src = source
+    local targetId = tonumber(args[1])
+    local amount = tonumber(args[2])
+
+    -- Si source != 0, verificar permisos de admin
+    if src ~= 0 then
+        if not QBCore.Functions.HasPermission(src, 'admin') then
+            return 
+        end
     end
 
-    cb({
-        name = xPlayer.getName(),
-        money = money,
-        coins = coins
-    })
-end)
-
--- 1. Iniciar Compra de Coins (Real Money)
-RegisterNetEvent('dokploy_economy:initiatePurchase')
-AddEventHandler('dokploy_economy:initiatePurchase', function(packageId)
-    local _source = source
-    local xPlayer = ESX.GetPlayerFromId(_source)
-    local package = Config.CoinPackages[packageId]
-
-    if not package then return end
-
-    -- Llamada al Backend Mock/Real
-    -- Aquí simplificamos para el ejemplo. En prod: PerformHttpRequest a MercadoPago/Stripe
-    print('Iniciando compra para: ' .. xPlayer.getName() .. ' - Paquete: ' .. packageId)
-    
-    -- Simulamos retorno de URL de pago
-    TriggerClientEvent('dokploy_economy:openUrl', _source, {
-        url = "https://mercadopago.com/checkout/mock/" .. packageId,
-        title = package.label,
-        price = package.price
-    })
+    if targetId and amount then
+        local Player = QBCore.Functions.GetPlayer(targetId)
+        if Player then
+            Player.Functions.AddMoney('coins', amount, "Tebex Purchase")
+            TriggerClientEvent('QBCore:Notify', targetId, '¡Has recibido ' .. amount .. ' Caserio Coins!', 'success')
+            print('Se han añadido ' .. amount .. ' coins al ID ' .. targetId)
+            
+            -- Update Client UI logic if open
+            TriggerClientEvent('dokploy_economy:updateData', targetId)
+        else
+            print('Jugador no encontrado: ' .. targetId)
+        end
+    else
+        print('Uso incorrecto: addcoins [id] [cantidad]')
+    end
 end)
 
 -- 2. Exchange (Dinero Juego -> Coins)
-RegisterNetEvent('dokploy_economy:exchangeMoney')
-AddEventHandler('dokploy_economy:exchangeMoney', function(amountGameMoney)
-    local _source = source
-    local xPlayer = ESX.GetPlayerFromId(_source)
-    
-    if xPlayer.getMoney() >= amountGameMoney then
-        local coinsToReceive = math.floor(amountGameMoney / Config.ExchangeRate)
-        
+RegisterNetEvent('dokploy_economy:exchangeMoney', function(amountGameMoney)
+    local src = source
+    local Player = QBCore.Functions.GetPlayer(src)
+    local amount = tonumber(amountGameMoney)
+
+    if not Player or not amount then return end
+
+    if Player.Functions.RemoveMoney('cash', amount, "Exchange to Coins") then
+        local coinsToReceive = math.floor(amount / Config.ExchangeRate)
         if coinsToReceive > 0 then
-            xPlayer.removeMoney(amountGameMoney)
-            xPlayer.addAccountMoney('coins', coinsToReceive)
-            
-            xPlayer.showNotification('Has intercambiado $' .. amountGameMoney .. ' por ' .. coinsToReceive .. ' Coins.')
-            
-            -- Actualizar UI
-            TriggerClientEvent('dokploy_economy:updateData', _source)
+            Player.Functions.AddMoney('coins', coinsToReceive, "Exchange from Cash")
+            TriggerClientEvent('QBCore:Notify', src, 'Has intercambiado $' .. amount .. ' por ' .. coinsToReceive .. ' Coins.', 'success')
+            TriggerClientEvent('dokploy_economy:updateData', src)
         else
-            xPlayer.showNotification('Cantidad insuficiente para comprar al menos 1 Coin.')
+            -- Revertir si no alcanza para 1 coin (aunque la UI no debería dejarlo)
+             Player.Functions.AddMoney('cash', amount, "Exchange Revert")
+             TriggerClientEvent('QBCore:Notify', src, 'Cantidad insuficiente.', 'error')
         end
     else
-        xPlayer.showNotification('No tienes suficiente dinero.')
+        TriggerClientEvent('QBCore:Notify', src, 'No tienes suficiente dinero.', 'error')
     end
 end)
 
 -- 3. Compra de Items (Usando Coins)
-RegisterNetEvent('dokploy_economy:buyItem')
-AddEventHandler('dokploy_economy:buyItem', function(data)
-    local _source = source
-    local xPlayer = ESX.GetPlayerFromId(_source)
+RegisterNetEvent('dokploy_economy:buyItem', function(data)
+    local src = source
+    local Player = QBCore.Functions.GetPlayer(src)
     local price = tonumber(data.price)
     local label = data.label
-    
-    local coinsAccount = xPlayer.getAccount('coins')
-    local currentCoins = 0
-    if coinsAccount then currentCoins = coinsAccount.money end
 
-    if currentCoins >= price then
-        xPlayer.removeAccountMoney('coins', price)
-        xPlayer.showNotification('¡Has comprado ' .. label .. ' por ' .. price .. ' Coins!')
+    if not Player or not price then return end
 
-        -- Lógica de entrega del item (Vehículo, Casa, etc.)
-        -- Aquí iría la integración con esx_vehicleshop, qb-housing, etc.
-        -- Por ahora, solo descontamos coins y notificamos.
-        print('Item comprado: ' .. label .. ' por ' .. xPlayer.getName())
-        
-        -- Actualizar UI
-        TriggerClientEvent('dokploy_economy:updateData', _source)
+    if Player.Functions.GetMoney('coins') >= price then
+        if Player.Functions.RemoveMoney('coins', price, "Shop Purchase: " .. label) then
+            TriggerClientEvent('QBCore:Notify', src, '¡Has comprado ' .. label .. ' por ' .. price .. ' Coins!', 'success')
+            print('Item comprado: ' .. label .. ' por ' .. Player.PlayerData.charinfo.firstname)
+            
+            -- Lógica placeholder de entrega
+            -- Aquí podrías usar exports['qb-vehicleshop']:GenerateVehicle(...) etc.
+            
+            TriggerClientEvent('dokploy_economy:updateData', src)
+        end
     else
-        xPlayer.showNotification('No tienes suficientes Coins.')
+        TriggerClientEvent('QBCore:Notify', src, 'No tienes suficientes Coins.', 'error')
     end
 end)

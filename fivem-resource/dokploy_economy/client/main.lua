@@ -1,54 +1,68 @@
+local QBCore = exports['qb-core']:GetCoreObject()
+local isMenuOpen = false
+
 local function toggleNuiFrame(shouldShow)
-  SetNuiFocus(shouldShow, shouldShow)
-  SendNUIMessage({
-    action = 'setVisible',
-    data = shouldShow
-  })
+    isMenuOpen = shouldShow
+    SetNuiFocus(shouldShow, shouldShow)
+    SendNUIMessage({
+        action = 'setVisible',
+        data = shouldShow
+    })
 end
 
 RegisterCommand('openshop', function()
-  -- Request latest player data from server before opening
-  ESX.TriggerServerCallback('dokploy_economy:getPlayerData', function(data)
-      SendNUIMessage({
-          action = 'updatePlayerData',
-          data = data
-      })
-      toggleNuiFrame(true)
-  end)
+    -- Get Player Data from QBCore directly
+    local PlayerData = QBCore.Functions.GetPlayerData()
+    local money = PlayerData.money['cash']
+    local coins = PlayerData.money['coins'] or 0 -- Assumes 'coins' money type exists in QB
+
+    -- Update UI
+    SendNUIMessage({
+        action = 'updatePlayerData',
+        data = {
+            name = PlayerData.charinfo.firstname .. ' ' .. PlayerData.charinfo.lastname,
+            money = money,
+            coins = coins
+        }
+    })
+    
+    toggleNuiFrame(true)
 end)
 
 RegisterNUICallback('hideFrame', function(_, cb)
-  toggleNuiFrame(false)
-  cb({})
+    toggleNuiFrame(false)
+    cb({})
 end)
 
-RegisterNUICallback('buyCoins', function(data, cb)
-  -- data.packageId (e.g., 'coins_5000')
-  TriggerServerEvent('dokploy_economy:initiatePurchase', data.packageId)
-  cb({})
+RegisterNUICallback('openStore', function(data, cb)
+    SendNUIMessage({
+        action = 'openUrl',
+        url = Config.StoreUrl
+    })
+    QBCore.Functions.Notify('Visita nuestra tienda oficial para adquirir Coins.', 'primary')
+    cb({})
 end)
 
 RegisterNUICallback('exchangeMoney', function(data, cb)
-  -- data.amount
-  TriggerServerEvent('dokploy_economy:exchangeMoney', data.amount)
-  cb({})
+    TriggerServerEvent('dokploy_economy:exchangeMoney', data.amount)
+    cb({})
 end)
 
 RegisterNUICallback('buyItem', function(data, cb)
-  TriggerServerEvent('dokploy_economy:buyItem', data)
-  cb({})
+    TriggerServerEvent('dokploy_economy:buyItem', data)
+    cb({})
 end)
 
-RegisterNetEvent('dokploy_economy:openUrl')
-AddEventHandler('dokploy_economy:openUrl', function(data)
-    -- En un entorno real, usaríamos una función para abrir navegador overlay o steam
-    -- Por ahora, copiamos al portapapeles o usamos SendNUIMessage si la UI tiene modal de pago
-    SendNUIMessage({
-        action = 'openPaymentUrl',
-        data = data
-    })
-    
-    -- Opcional: Abrir en navegador externo del usuario
-    ESX.ShowNotification('Por favor completa el pago en el navegador abierto.')
-    -- ExecuteCommand('start ' .. data.url) -- No funciona en clients streams, usar guia de usuario
+RegisterNetEvent('dokploy_economy:updateData', function()
+    if isMenuOpen then
+        local PlayerData = QBCore.Functions.GetPlayerData()
+        SendNUIMessage({
+            action = 'updatePlayerData',
+            data = {
+                name = PlayerData.charinfo.firstname .. ' ' .. PlayerData.charinfo.lastname,
+                money = PlayerData.money['cash'],
+                coins = PlayerData.money['coins'] or 0
+            }
+        })
+    end
 end)

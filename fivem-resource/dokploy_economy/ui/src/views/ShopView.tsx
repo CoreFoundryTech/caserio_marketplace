@@ -2,13 +2,7 @@ import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { Car, Home, Warehouse, Tag, ShoppingCart, ShoppingBag } from 'lucide-react'
 import { useAppStore } from '../store/useAppStore'
-
-const categories = [
-    { id: 'all', label: 'Todo', icon: Tag },
-    { id: 'vehicles', label: 'Vehículos', icon: Car },
-    { id: 'properties', label: 'Propiedades', icon: Home },
-    { id: 'garages', label: 'Garages', icon: Warehouse },
-]
+import { useLocales } from '../hooks/useLocales'
 
 const dummyItems = [
     { id: 1, name: 'Lamborghini Urus', category: 'vehicles', price: 15000, image: 'https://i.imgur.com/3Z6Qj0M.png' }, // Placeholder images
@@ -22,6 +16,14 @@ const dummyItems = [
 export const ShopView = () => {
     const [activeCategory, setActiveCategory] = useState('all')
     const { addToCart } = useAppStore()
+    const { t } = useLocales()
+
+    const categories = [
+        { id: 'all', label: t.shop.categories.all, icon: Tag },
+        { id: 'vehicles', label: t.shop.categories.vehicles, icon: Car },
+        { id: 'properties', label: t.shop.categories.properties, icon: Home },
+        { id: 'garages', label: t.shop.categories.garages, icon: Warehouse },
+    ]
 
     const filteredItems = activeCategory === 'all'
         ? dummyItems
@@ -31,8 +33,8 @@ export const ShopView = () => {
         <div className="space-y-6 h-full flex flex-col">
             <div className="flex items-center justify-between">
                 <div>
-                    <h2 className="text-3xl font-bold">Tienda Oficial</h2>
-                    <p className="text-gray-400">Gasta tus Coins en objetos premium.</p>
+                    <h2 className="text-3xl font-bold">{t.shop.title}</h2>
+                    <p className="text-gray-400">{t.shop.subtitle}</p>
                 </div>
             </div>
 

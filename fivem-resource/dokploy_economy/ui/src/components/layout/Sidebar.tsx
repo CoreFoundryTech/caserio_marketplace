@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion'
 import { Coins, Home, ShoppingBag, ArrowRightLeft, Users } from 'lucide-react'
 import { useAppStore, type Tab } from '../../store/useAppStore'
+import { useLocales } from '../../hooks/useLocales'
 import { clsx } from 'clsx'
 import { twMerge } from 'tailwind-merge'
 
@@ -30,38 +31,28 @@ const NavItem = ({ icon: Icon, label, active, onClick }: { tab: Tab, icon: any, 
 
 export const Sidebar = () => {
     const { currentTab, setTab, user } = useAppStore()
-
-    const tabs = [
-        { id: 'home', label: 'Inicio', icon: Home },
-        { id: 'coins', label: 'Caserio Coins', icon: Coins },
-        { id: 'shop', label: 'Tienda Oficial', icon: ShoppingBag },
-        { id: 'exchange', label: 'Exchange', icon: ArrowRightLeft },
-        { id: 'marketplace', label: 'Marketplace', icon: Users },
-    ]
+    const { t } = useLocales()
 
     return (
-        <div className="w-64 h-full bg-[#121216]/95 border-r border-white/5 flex flex-col p-4 backdrop-blur-md">
+        <div className="w-64 h-full bg-black/40 backdrop-blur-xl border-r border-white/5 flex flex-col p-4 relative z-50">
+            {/* Logo area */}
             <div className="flex items-center gap-3 px-2 mb-8">
-                <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-blue-500 to-purple-600 flex items-center justify-center shadow-lg shadow-blue-500/20">
-                    <span className="text-lg font-bold">C</span>
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-purple-600 flex items-center justify-center shadow-lg shadow-blue-500/20">
+                    <Coins className="text-white" size={24} />
                 </div>
                 <div>
-                    <h1 className="font-bold text-white text-lg leading-tight">Caserio Shop</h1>
-                    <p className="text-xs text-blue-300 font-medium">{user.coins.toLocaleString()} Coins</p>
+                    <h1 className="font-bold text-xl text-white tracking-tight">Caserio</h1>
+                    <span className="text-xs font-medium text-blue-400 tracking-wider uppercase">Economy</span>
                 </div>
             </div>
 
-            <nav className="flex-1 space-y-1">
-                {tabs.map((t) => (
-                    <NavItem
-                        key={t.id}
-                        tab={t.id as Tab}
-                        icon={t.icon}
-                        label={t.label}
-                        active={currentTab === t.id}
-                        onClick={() => setTab(t.id as Tab)}
-                    />
-                ))}
+            {/* Navigation */}
+            <nav className="flex-1 space-y-2">
+                <NavItem tab="home" icon={Home} label={t.sidebar.home} active={currentTab === 'home'} onClick={() => setTab('home')} />
+                <NavItem tab="coins" icon={Coins} label={t.sidebar.coins} active={currentTab === 'coins'} onClick={() => setTab('coins')} />
+                <NavItem tab="shop" icon={ShoppingBag} label={t.sidebar.shop} active={currentTab === 'shop'} onClick={() => setTab('shop')} />
+                <NavItem tab="exchange" icon={ArrowRightLeft} label={t.sidebar.exchange} active={currentTab === 'exchange'} onClick={() => setTab('exchange')} />
+                <NavItem tab="marketplace" icon={Users} label={t.sidebar.marketplace} active={currentTab === 'marketplace'} onClick={() => setTab('marketplace')} />
             </nav>
 
             <div className="mt-auto p-4 bg-white/5 rounded-2xl border border-white/5">

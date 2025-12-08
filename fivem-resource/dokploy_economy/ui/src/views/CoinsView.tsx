@@ -1,7 +1,9 @@
 import { motion } from 'framer-motion'
 import { Check, Star, CreditCard } from 'lucide-react'
+import { useLocales } from '../hooks/useLocales'
 
 const CoinPackage = ({ amount, price, bonus, popular }: { amount: number, price: number, bonus?: number, popular?: boolean }) => {
+    const { t } = useLocales()
     return (
         <motion.div
             whileHover={{ y: -5 }}
@@ -9,7 +11,7 @@ const CoinPackage = ({ amount, price, bonus, popular }: { amount: number, price:
         >
             {popular && (
                 <div className="absolute top-0 right-0 bg-blue-500 text-xs font-bold px-3 py-1 rounded-bl-xl text-white">
-                    POPULAR
+                    {t.coins.popular}
                 </div>
             )}
 
@@ -22,21 +24,27 @@ const CoinPackage = ({ amount, price, bonus, popular }: { amount: number, price:
 
             {bonus && (
                 <div className="mb-4 px-3 py-1 rounded-full bg-green-500/20 text-green-400 text-xs font-bold border border-green-500/20">
-                    +{bonus.toLocaleString()} BONUS
+                    +{bonus.toLocaleString()} {t.coins.bonus}
                 </div>
             )}
 
             <div className="mt-auto w-full">
-                <p className="text-3xl font-bold text-white mb-4">${price}<span className="text-sm text-gray-400 font-normal"> USD</span></p>
+                <p className="text-3xl font-bold text-white mb-4">${price}<span className="text-sm text-gray-400 font-normal"> {t.coins.usd}</span></p>
                 <button
                     onClick={() => {
                         import('../utils/fetchNui').then(({ fetchNui }) => {
-                            fetchNui('buyCoins', { packageId: `coins_${amount}` })
+                            // En lugar de iniciar pago API, abrimos la tienda Tebex
+                            fetchNui('openStore', { packageId: `coins_${amount}` })
+                            if ((window as any).invokeNative) {
+                                // Logic handled by client (Show notif)
+                            } else {
+                                window.open('https://tienda.example.com', '_blank')
+                            }
                         })
                     }}
                     className="w-full py-3 rounded-xl bg-white text-black font-bold hover:bg-blue-500 hover:text-white transition-all duration-200 flex items-center justify-center gap-2">
                     <CreditCard size={18} />
-                    Comprar
+                    {t.coins.buy_btn}
                 </button>
             </div>
         </motion.div>
@@ -44,11 +52,12 @@ const CoinPackage = ({ amount, price, bonus, popular }: { amount: number, price:
 }
 
 export const CoinsView = () => {
+    const { t } = useLocales()
     return (
         <div className="space-y-6">
             <div className="flex flex-col gap-2">
-                <h2 className="text-3xl font-bold">Tienda de Monedas</h2>
-                <p className="text-gray-400">Adquiere Caserio Coins para desbloquear contenido exclusivo.</p>
+                <h2 className="text-3xl font-bold">{t.coins.title}</h2>
+                <p className="text-gray-400">{t.coins.subtitle}</p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -59,9 +68,9 @@ export const CoinsView = () => {
             </div>
 
             <div className="mt-8 p-6 rounded-2xl bg-gradient-to-r from-purple-900/20 to-blue-900/20 border border-white/5">
-                <h3 className="text-xl font-bold mb-4">Beneficios VIP</h3>
+                <h3 className="text-xl font-bold mb-4">{t.coins.vip_title}</h3>
                 <div className="grid grid-cols-3 gap-4">
-                    {['Prioridad en Cola', 'Acceso a Whitelist', 'Vehículos Exclusivos'].map((item, i) => (
+                    {t.coins.vip_items.map((item: string, i: number) => (
                         <div key={i} className="flex items-center gap-3">
                             <div className="w-8 h-8 rounded-full bg-green-500/20 flex items-center justify-center text-green-400">
                                 <Check size={16} />
